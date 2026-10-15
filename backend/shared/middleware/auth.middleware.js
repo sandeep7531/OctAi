@@ -4,11 +4,10 @@ import asyncHandler from "../utils/asyncHandler.js";
 
 const verifyAuth = asyncHandler(async (req, _, next) => {
   try {
-    console.log("verify Auth --->", req.cookies);
     const { session } = req.cookies || {};
 
     if (!session) {
-      throw new ApiError(401, "Session is requried");
+      throw new ApiError(401, "Unauthorized access session is requried");
     }
     const sessionData = await redis.get(`session_${session}`);
 
