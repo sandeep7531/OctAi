@@ -1,15 +1,14 @@
-
 import dotenv from "dotenv";
 import connectDB from "../../shared/db/index.js";
 import { app } from "./app.js";
 
 dotenv.config();
-const port = process.env.PORT || 8002;
+const port = process.env.PORT;
 
 connectDB()
   .then(() => {
     app.listen(port, () => {
-      console.log(`Auth listening on port ${port}`);
+      console.log(`Chat listening on port ${port}`);
     });
     app.on("error", (error) => {
       console.log(error);

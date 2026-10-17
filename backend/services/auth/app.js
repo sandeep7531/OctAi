@@ -1,19 +1,7 @@
-import express from "express";
-import cors from "cors";
 import authRoutes from "./routers/auth.routes.js";
-import cookieParser from "cookie-parser";
+import { createSerciveApp } from "../../shared/utils/createApp.js";
 
-const app = express();
-
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-  }),
-);
-
-app.use(express.json({ limit: "16kb" }));
-app.use(cookieParser())
+const app = createSerciveApp();
 
 app.use("/", authRoutes);
 

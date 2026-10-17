@@ -1,18 +1,8 @@
-import express from "express";
-import cookieParser from "cookie-parser";
-import cors from "cors";
 import chatRouter from "./routes/chat.routes.js";
 import { verifyAuth } from "../../shared/middleware/auth.middleware.js";
-const app = express();
+import { createSerciveApp } from "../../shared/utils/createApp.js";
+const app = createSerciveApp();
 
-app.use(express.json({ limit: "16kb" }));
-app.use(cookieParser());
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true,
-  }),
-);
 
 app.use("/", verifyAuth, chatRouter);
 
