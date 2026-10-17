@@ -11,10 +11,15 @@ export const agent = asyncHandler(async (req, res) => {
     if (!prompt || !conversationId)
       throw new ApiError(401, "Prompt and conversation id is required");
 
-    await axios.post(`${process.env.CHAT_SERVICE_URL}/save-message`, {
+    const chatServiceUrl = process.env.CHAT_SERVICE_URL
+    await axios.post(`${chatServiceUrl}/save-message`, {
       conversationId,
       role,
       content: prompt,
+    }, {
+      headers: {
+        Cookie: req.headers.cookie,
+      },
     });
 
     const result = await agentGraph.invoke({
@@ -28,10 +33,12 @@ export const agent = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, response, "agent response"));
   } catch (error) {
-    throw new ApiError(
-      error.statusCode || 500,
-      error.message || "Error in agent service",
-    );
+    const status = error.response?.status || error.statusCode || 500;
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      "Error in agent service";
+    throw new ApiError(status, message);
   }
 });
 
