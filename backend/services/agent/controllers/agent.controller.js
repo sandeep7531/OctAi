@@ -29,6 +29,17 @@ export const agent = asyncHandler(async (req, res) => {
     });
 
     const response = result.aiResponse;
+
+    await axios.post(`${chatServiceUrl}/save-message`, {
+      conversationId,
+      role: "ai",
+      content: response,
+    }, {
+      headers: {
+        Cookie: req.headers.cookie,
+      },
+    });
+
     return res
       .status(200)
       .json(new ApiResponse(200, response, "agent response"));

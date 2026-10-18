@@ -16,24 +16,37 @@ import { ChatHeader } from "@/components/Chat/ChatHeader";
 import { ChatArea } from "@/components/Chat/ChatArea";
 import { ChatInput } from "@/components/Chat/ChatInput";
 import { LoginModal } from "@/components/Auth/LoginModal";
+import {
+  setConversations,
+  addConversation,
+  deleteConversation,
+  updateConversation,
+} from "@/redux/conversationSlice";
+import {
+  setActiveChatId,
+  setChatMessages,
+  appendMessage,
+  setIsLoading,
+  setIsFetchingChats,
+  clearChatState,
+} from "@/redux/chatSlice";
 
 const Home = () => {
   const { currentUser } = useSelector((state) => state.user);
+  const { conversations } = useSelector((state) => state.conversation);
+  const { activeChatId, messagesMap, isLoading, isFetchingChats } = useSelector(
+    (state) => state.chat
+  );
   const dispatch = useDispatch();
 
   // Layout & UI States
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
 
-  // Chat Data States
-  const [conversations, setConversations] = React.useState([]);
-  const [activeChatId, setActiveChatId] = React.useState(null);
-  const [messagesMap, setMessagesMap] = React.useState({});
+  // Local Form / Input States
   const [inputPrompt, setInputPrompt] = React.useState("");
   const [selectedAgent, setSelectedAgent] = React.useState("Medium");
   const [activeModel, setActiveModel] = React.useState("OctAI 2.0");
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [isFetchingChats, setIsFetchingChats] = React.useState(false);
 
   // Active chat messages derived from map
   const activeMessages = React.useMemo(() => {
@@ -44,28 +57,28 @@ const Home = () => {
   // Load user conversations when logged in
   const loadConversations = React.useCallback(async () => {
     if (!currentUser) return;
-    setIsFetchingChats(true);
+    dispatch(setIsFetchingChats(true));
     try {
       const res = await fetchConversations();
       const list = res?.data || [];
-      setConversations(list);
+      dispatch(setConversations(list));
 
       if (list.length > 0) {
         const firstId = list[0]._id || list[0].id;
-        setActiveChatId(firstId);
+        dispatch(setActiveChatId(firstId));
         loadChatMessages(firstId);
       } else {
-        // If user has zero chats, start fresh
-        setActiveChatId(null);
+        dispatch(setActiveChatId(null));
       }
     } catch (err) {
       console.error("Failed to fetch conversations:", err);
       if (err?.response?.status === 401) {
         dispatch(setUser(null));
+        dispatch(clearChatState());
         setIsLoginModalOpen(true);
       }
     } finally {
-      setIsFetchingChats(false);
+      dispatch(setIsFetchingChats(false));
     }
   }, [currentUser, dispatch]);
 
@@ -75,10 +88,7 @@ const Home = () => {
     try {
       const res = await fetchMessages(conversationId);
       const msgs = res?.data || [];
-      setMessagesMap((prev) => ({
-        ...prev,
-        [conversationId]: msgs,
-      }));
+      dispatch(setChatMessages({ conversationId, messages: msgs }));
     } catch (err) {
       console.error(`Failed to fetch messages for ${conversationId}:`, err);
     }
@@ -88,18 +98,16 @@ const Home = () => {
   React.useEffect(() => {
     if (!currentUser) {
       setIsLoginModalOpen(true);
-      setConversations([]);
-      setMessagesMap({});
-      setActiveChatId(null);
+      dispatch(clearChatState());
     } else {
       setIsLoginModalOpen(false);
       loadConversations();
     }
-  }, [currentUser, loadConversations]);
+  }, [currentUser, loadConversations, dispatch]);
 
   // Handle switching conversations
   const handleSelectConversation = (id) => {
-    setActiveChatId(id);
+    dispatch(setActiveChatId(id));
     if (!messagesMap[id]) {
       loadChatMessages(id);
     }
@@ -113,6 +121,8 @@ const Home = () => {
       console.error("Logout error:", err);
     } finally {
       dispatch(setUser(null));
+      dispatch(setConversations([]));
+      dispatch(clearChatState());
       setIsLoginModalOpen(true);
     }
   };
@@ -128,9 +138,9 @@ const Home = () => {
       const newConv = res?.data;
       if (newConv) {
         const newId = newConv._id || newConv.id;
-        setConversations((prev) => [newConv, ...prev]);
-        setActiveChatId(newId);
-        setMessagesMap((prev) => ({ ...prev, [newId]: [] }));
+        dispatch(addConversation(newConv));
+        dispatch(setActiveChatId(newId));
+        dispatch(setChatMessages({ conversationId: newId, messages: [] }));
       }
     } catch (err) {
       console.error("Error creating new conversation:", err);
@@ -139,11 +149,11 @@ const Home = () => {
 
   // Delete Conversation (local filter)
   const handleDeleteConversation = (id) => {
-    setConversations((prev) => prev.filter((c) => (c._id || c.id) !== id));
+    dispatch(deleteConversation(id));
     if (activeChatId === id) {
       const remaining = conversations.filter((c) => (c._id || c.id) !== id);
       const nextId = remaining[0]?._id || remaining[0]?.id || null;
-      setActiveChatId(nextId);
+      dispatch(setActiveChatId(nextId));
       if (nextId) loadChatMessages(nextId);
     }
   };
@@ -156,11 +166,7 @@ const Home = () => {
       const trimmed = newTitle.trim();
       try {
         await updateConversationTitle(id, trimmed);
-        setConversations((prev) =>
-          prev.map((c) =>
-            (c._id || c.id) === id ? { ...c, title: trimmed } : c
-          )
-        );
+        dispatch(updateConversation({ id, title: trimmed }));
       } catch (err) {
         console.error("Failed to rename conversation:", err);
       }
@@ -186,8 +192,8 @@ const Home = () => {
         const newConv = res?.data;
         if (!newConv) throw new Error("Failed to create conversation");
         targetConversationId = newConv._id || newConv.id;
-        setConversations((prev) => [newConv, ...prev]);
-        setActiveChatId(targetConversationId);
+        dispatch(addConversation(newConv));
+        dispatch(setActiveChatId(targetConversationId));
       } catch (createErr) {
         console.error("Could not create conversation for prompt:", createErr);
         return;
@@ -201,17 +207,16 @@ const Home = () => {
       createdAt: new Date().toISOString(),
     };
 
-    // Optimistically update message feed
-    setMessagesMap((prev) => ({
-      ...prev,
-      [targetConversationId]: [
-        ...(prev[targetConversationId] || []),
-        optimisticUserMessage,
-      ],
-    }));
+    // Optimistically update message feed in Redux
+    dispatch(
+      appendMessage({
+        conversationId: targetConversationId,
+        message: optimisticUserMessage,
+      })
+    );
 
     setInputPrompt("");
-    setIsLoading(true);
+    dispatch(setIsLoading(true));
 
     // If current conversation has default name, rename it to user's first prompt
     const currentChat = conversations.find(
@@ -219,14 +224,8 @@ const Home = () => {
     );
     if (currentChat && currentChat.title === "New chat") {
       const newTitle = textToSend.slice(0, 30);
-      updateConversationTitle(targetConversationId, newTitle).catch(() => {});
-      setConversations((prev) =>
-        prev.map((c) =>
-          (c._id || c.id) === targetConversationId
-            ? { ...c, title: newTitle }
-            : c
-        )
-      );
+      updateConversationTitle(targetConversationId, newTitle).catch(() => { });
+      dispatch(updateConversation({ id: targetConversationId, title: newTitle }));
     }
 
     try {
@@ -241,8 +240,8 @@ const Home = () => {
         typeof agentRes?.data === "string"
           ? agentRes.data
           : agentRes?.data?.content ||
-            agentRes?.data?.aiResponse ||
-            "I received your message.";
+          agentRes?.data?.aiResponse ||
+          "I received your message.";
 
       const assistantMessage = {
         id: `ai-${Date.now()}`,
@@ -251,33 +250,30 @@ const Home = () => {
         createdAt: new Date().toISOString(),
       };
 
-      setMessagesMap((prev) => ({
-        ...prev,
-        [targetConversationId]: [
-          ...(prev[targetConversationId] || []),
-          assistantMessage,
-        ],
-      }));
+      dispatch(
+        appendMessage({
+          conversationId: targetConversationId,
+          message: assistantMessage,
+        })
+      );
     } catch (apiError) {
       console.error("Agent execution error:", apiError);
       const errorMessage = {
         id: `err-${Date.now()}`,
         role: "assistant",
-        content: `⚠️ Error: ${
-          apiError?.response?.data?.message ||
+        content: `⚠️ Error: ${apiError?.response?.data?.message ||
           apiError?.message ||
           "Failed to get response from OctAI agent"
-        }`,
+          }`,
       };
-      setMessagesMap((prev) => ({
-        ...prev,
-        [targetConversationId]: [
-          ...(prev[targetConversationId] || []),
-          errorMessage,
-        ],
-      }));
+      dispatch(
+        appendMessage({
+          conversationId: targetConversationId,
+          message: errorMessage,
+        })
+      );
     } finally {
-      setIsLoading(false);
+      dispatch(setIsLoading(false));
     }
   };
 
