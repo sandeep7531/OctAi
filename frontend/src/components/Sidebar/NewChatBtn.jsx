@@ -3,7 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { LuSquarePen, LuSearch } from "react-icons/lu";
 
-export const NewChatBtn = ({ onNewChat, onOpenSearch }) => {
+export const NewChatBtn = ({ onNewChat, onOpenSearch, isCollapsed = false }) => {
+  if (isCollapsed) {
+    return (
+      <div className="flex justify-center px-2 py-2">
+        <Tooltip content="New chat" side="right">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onNewChat}
+            className="h-9 w-9 rounded-lg text-neutral-200 hover:bg-[#212121] hover:text-white transition-colors"
+          >
+            <LuSquarePen className="h-4 w-4" />
+          </Button>
+        </Tooltip>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1.5 px-3 py-2">
       <Button

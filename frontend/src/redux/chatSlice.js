@@ -3,7 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const chatSlice = createSlice({
   name: "chat",
   initialState: {
-    activeChatId: null,
+    activeChatId: localStorage.getItem("activeChatId") || null,
     messagesMap: {}, // { [conversationId]: Array<Message> }
     isLoading: false,
     isFetchingChats: false,
@@ -11,6 +11,11 @@ const chatSlice = createSlice({
   reducers: {
     setActiveChatId: (state, action) => {
       state.activeChatId = action.payload;
+      if (action.payload) {
+        localStorage.setItem("activeChatId", action.payload);
+      } else {
+        localStorage.removeItem("activeChatId");
+      }
     },
     setChatMessages: (state, action) => {
       const { conversationId, messages } = action.payload;
@@ -34,6 +39,7 @@ const chatSlice = createSlice({
       state.messagesMap = {};
       state.isLoading = false;
       state.isFetchingChats = false;
+      localStorage.removeItem("activeChatId");
     },
   },
 });

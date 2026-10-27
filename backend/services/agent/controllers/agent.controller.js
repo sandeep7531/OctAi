@@ -3,6 +3,7 @@ import { ApiError } from "../../../shared/utils/apiError.js";
 import { ApiResponse } from "../../../shared/utils/apiResponse.js";
 import asyncHandler from "../../../shared/utils/asyncHandler.js";
 import { agentGraph } from "../graph/graph.js";
+import { addMessages, getMemory } from "../config/memory.js";
 
 export const agent = asyncHandler(async (req, res) => {
   try {
@@ -11,7 +12,11 @@ export const agent = asyncHandler(async (req, res) => {
     if (!prompt || !conversationId)
       throw new ApiError(401, "Prompt and conversation id is required");
 
-    const chatServiceUrl = process.env.CHAT_SERVICE_URL
+    // Fetch previous conversation history
+    const history = await getMemory(conversationId, req.headers.cookie);
+
+
+    const chatServiceUrl = process.env.CHAT_SERVICE_URL;
     await axios.post(`${chatServiceUrl}/save-message`, {
       conversationId,
       role,
@@ -26,9 +31,12 @@ export const agent = asyncHandler(async (req, res) => {
       prompt,
       conversationId,
       role,
+      history,
     });
 
     const response = result.aiResponse;
+    await addMessages(conversationId, 'user', prompt); ~
+      await addMessages(conversationId, 'ai', response)
 
     await axios.post(`${chatServiceUrl}/save-message`, {
       conversationId,

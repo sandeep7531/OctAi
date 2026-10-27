@@ -40,8 +40,24 @@ const Home = () => {
   const dispatch = useDispatch();
 
   // Layout & UI States
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(
+    typeof window !== "undefined" ? window.innerWidth > 768 : true
+  );
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
+
+  // Auto-collapse sidebar on mobile/tablet screens (<= 768px)
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Local Form / Input States
   const [inputPrompt, setInputPrompt] = React.useState("");
@@ -64,9 +80,12 @@ const Home = () => {
       dispatch(setConversations(list));
 
       if (list.length > 0) {
-        const firstId = list[0]._id || list[0].id;
-        dispatch(setActiveChatId(firstId));
-        loadChatMessages(firstId);
+        const savedId = localStorage.getItem("activeChatId");
+        const isValidSaved = list.some((c) => (c._id || c.id) === savedId);
+        const targetId = isValidSaved ? savedId : (list[0]._id || list[0].id);
+
+        dispatch(setActiveChatId(targetId));
+        loadChatMessages(targetId);
       } else {
         dispatch(setActiveChatId(null));
       }
@@ -98,12 +117,11 @@ const Home = () => {
   React.useEffect(() => {
     if (!currentUser) {
       setIsLoginModalOpen(true);
-      dispatch(clearChatState());
     } else {
       setIsLoginModalOpen(false);
       loadConversations();
     }
-  }, [currentUser, loadConversations, dispatch]);
+  }, [currentUser, loadConversations]);
 
   // Handle switching conversations
   const handleSelectConversation = (id) => {

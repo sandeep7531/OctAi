@@ -11,23 +11,10 @@ import {
   LuSparkles,
 } from "react-icons/lu";
 
-export const ChatHeader = ({ isSidebarOpen, onToggleSidebar, activeModel = "OctAI 2.0", onModelSelect }) => {
+export const ChatHeader = ({ activeModel = "OctAI 2.0", onModelSelect }) => {
   return (
     <header className="h-14 flex items-center justify-between px-4 border-b border-white/[0.04] bg-[#0d0f14]/80 backdrop-blur shrink-0">
       <div className="flex items-center gap-2">
-        {!isSidebarOpen && (
-          <Tooltip content="Open sidebar" side="bottom">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleSidebar}
-              className="text-neutral-400 hover:text-white hover:bg-neutral-800"
-            >
-              <LuPanelLeft className="h-4 w-4" />
-            </Button>
-          </Tooltip>
-        )}
-
         <DropdownMenu
           trigger={
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-[#212121] transition-colors cursor-pointer select-none">
